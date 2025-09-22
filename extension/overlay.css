@@ -328,7 +328,6 @@
 
 .leetcode-helper-button i {
   transition: transform 0.3s ease;
-  margin-right: 8px;
 }
 
 .leetcode-helper-button i.fa-plus {
