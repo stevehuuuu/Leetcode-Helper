@@ -21,6 +21,9 @@ function initializeExtension() {
     document.getElementById('leetcode-helper-get-hint').addEventListener('click', getHint);
     document.getElementById('leetcode-helper-get-hint-advanced').addEventListener('click', getHintAdvanced);
     document.getElementById('leetcode-helper-toggle').addEventListener('click', toggleOverlay);
+    document.getElementById('leetcode-helper-favorite').addEventListener('click', toggleFavorite);
+    // 检查当前题目是否已收藏
+    checkIsFavorite();
   } catch (error) {
     console.error("Error during extension initialization:", error);
     displayErrorMessage("Error: LeetCode's page structure has changed. The extension may not work correctly.");
@@ -84,7 +87,12 @@ function createOverlay() {
         <i class="fa-solid fa-puzzle-piece" style="margin-right: 8px;"></i>
         <h3>LeetCode Helper</h3>
       </div>
-      <button id="leetcode-helper-toggle" class="leetcode-helper-button"><i class="fa-solid fa-plus"></i></button>
+      <div style="display: flex; gap: 8px;">
+        <button id="leetcode-helper-favorite" class="leetcode-helper-button" title="Add to favorites">
+          <i class="fa-regular fa-star"></i>
+        </button>
+        <button id="leetcode-helper-toggle" class="leetcode-helper-button"><i class="fa-solid fa-plus"></i></button>
+      </div>
     </div>
     <div class="leetcode-helper-content collapsed" id="leetcode-helper-content">
       <p><i class="fa-solid fa-lightbulb" style="color: #f1c40f; margin-right: 5px;"></i> Need help with your solution? Click a button below!</p>
@@ -436,4 +444,57 @@ function formatTextWithCodeBlocks(text) {
   }
   
   return text;
+}
+
+// 收藏功能
+function toggleFavorite() {
+  const problemUrl = window.location.href;
+  const favoriteBtn = document.getElementById('leetcode-helper-favorite');
+  const icon = favoriteBtn.querySelector('i');
+  
+  chrome.storage.local.get('favorites', (result) => {
+    let favorites = result.favorites || [];
+    const existingIndex = favorites.findIndex(item => item.url === problemUrl);
+    
+    if (existingIndex >= 0) {
+      // 取消收藏
+      favorites.splice(existingIndex, 1);
+      icon.classList.remove('fa-solid');
+      icon.classList.add('fa-regular');
+      icon.style.color = '';
+    } else {
+      // 添加收藏
+      favorites.push({
+        title: problemTitle,
+        url: problemUrl,
+        timestamp: Date.now()
+      });
+      icon.classList.remove('fa-regular');
+      icon.classList.add('fa-solid');
+      icon.style.color = '#f1c40f';
+    }
+    
+    chrome.storage.local.set({favorites: favorites});
+  });
+}
+
+function checkIsFavorite() {
+  const problemUrl = window.location.href;
+  const favoriteBtn = document.getElementById('leetcode-helper-favorite');
+  const icon = favoriteBtn.querySelector('i');
+  
+  chrome.storage.local.get('favorites', (result) => {
+    const favorites = result.favorites || [];
+    const isFavorite = favorites.some(item => item.url === problemUrl);
+    
+    if (isFavorite) {
+      icon.classList.remove('fa-regular');
+      icon.classList.add('fa-solid');
+      icon.style.color = '#f1c40f';
+    } else {
+      icon.classList.remove('fa-solid');
+      icon.classList.add('fa-regular');
+      icon.style.color = '';
+    }
+  });
 } 

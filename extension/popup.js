@@ -47,6 +47,25 @@ function setupEventListeners() {
     const aboutTab = document.getElementById('about-tab');
     const settingsContent = document.getElementById('settings-content');
     const aboutContent = document.getElementById('about-content');
+
+    // 收藏Tab功能
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    const tabContents = document.querySelectorAll('.tab-content');
+    tabBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tab = btn.dataset.tab;
+        // 切换按钮状态
+        tabBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        // 切换内容
+        tabContents.forEach(content => content.classList.remove('active'));
+        document.getElementById(`${tab}-tab`).classList.add('active');
+        // 如果是收藏tab，加载收藏列表
+        if (tab === 'favorites') {
+          renderFavorites();
+        }
+      });
+    });
     
     if (settingsTab && aboutTab && settingsContent && aboutContent) {
       settingsTab.addEventListener('click', function() {
@@ -270,4 +289,82 @@ function showErrorMessage(message) {
   } catch (error) {
     console.error('Error showing error message:', error);
   }
+}
+
+// 渲染收藏列表
+function renderFavorites() {
+  const favoritesTab = document.getElementById('favorites-tab');
+  if (!favoritesTab) return;
+
+  chrome.storage.local.get('favorites', (result) => {
+    const favorites = result.favorites || [];
+    if (favorites.length === 0) {
+      favoritesTab.innerHTML = `
+        <div class="empty-state" style="text-align: center; padding: 40px 20px; color: var(--medium-text);">
+          <i class="fas fa-star" style="font-size: 48px; margin-bottom: 16px; opacity: 0.3;"></i>
+          <p>No favorite problems yet</p>
+          <p style="font-size: 14px; margin-top: 8px;">Star problems on LeetCode pages to save them here</p>
+        </div>
+      `;
+      return;
+    }
+
+    // 按收藏时间倒序排列
+    favorites.sort((a, b) => b.timestamp - a.timestamp);
+    
+    let html = `
+      <div style="margin-bottom: 16px;">
+        <h3 style="margin-bottom: 8px;"><i class="fas fa-star" style="color: #f1c40f; margin-right: 6px;"></i> Your Favorites</h3>
+        <p style="font-size: 14px; color: var(--medium-text);">${favorites.length} saved problems</p>
+      </div>
+      <div style="max-height: 400px; overflow-y: auto; padding-right: 4px;">
+    `;
+
+    favorites.forEach((item, index) => {
+      html += `
+        <div class="favorite-item" style="background: var(--dark-card); border: 1px solid var(--dark-border); border-radius: 8px; padding: 12px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between;">
+          <a href="${item.url}" target="_blank" style="color: var(--light-text); text-decoration: none; flex: 1; margin-right: 8px;">
+            <div style="font-weight: 500; margin-bottom: 4px;">${item.title}</div>
+            <div style="font-size: 12px; color: var(--medium-text);">${new Date(item.timestamp).toLocaleDateString()}</div>
+          </a>
+          <button class="remove-favorite" data-index="${index}" style="background: transparent; border: none; color: var(--error-color); cursor: pointer; padding: 4px 8px; border-radius: 4px; transition: background 0.2s;">
+            <i class="fas fa-trash"></i>
+          </button>
+        </div>
+      `;
+    });
+
+    html += '</div>';
+    favoritesTab.innerHTML = html;
+
+    // 添加删除收藏事件
+    document.querySelectorAll('.remove-favorite').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const index = parseInt(btn.dataset.index);
+        removeFavorite(index);
+      });
+    });
+
+    // 添加悬停效果
+    document.querySelectorAll('.favorite-item').forEach(item => {
+      item.addEventListener('mouseenter', () => {
+        item.style.borderColor = 'var(--primary-color)';
+      });
+      item.addEventListener('mouseleave', () => {
+        item.style.borderColor = 'var(--dark-border)';
+      });
+    });
+  });
+}
+
+// 删除收藏
+function removeFavorite(index) {
+  chrome.storage.local.get('favorites', (result) => {
+    let favorites = result.favorites || [];
+    favorites.splice(index, 1);
+    chrome.storage.local.set({favorites: favorites}, () => {
+      renderFavorites();
+    });
+  });
 }
